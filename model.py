@@ -48,14 +48,15 @@ class Model(object):
         """Predict prediction tensors from inputs tensor.
         输入 [batch_size,height, width, num_channels]  a batch of images. 
         利用slim模块加载预训练模型，然后返回softmax之前的参数
-        输出 预测值{'logits': logits}
+        输出 结果值{'logits': logits}
         """
 
         # resnet_v1_50 函数返回的形状为 [None, 1, 1, num]，
         with slim.arg_scope(nets.resnet_v1.resnet_arg_scope()):
-            net, endpoints = nets.resnet_v1.resnet_v1_50(
+            net, endpoints= nets.resnet_v1.resnet_v1_50(
                 preprocessed_inputs, num_classes=None,
                 is_training=self._is_training)
+        #conv5 = endpoints['resnet/conv5']
         # 为了输入到全连接层，需要用函数 tf.squeeze 去掉形状为 1 的第 1，2 个索引维度。
         net = tf.squeeze(net, axis=[1, 2])
         # 将resnet的最后一层输出进行处理，变成二分类

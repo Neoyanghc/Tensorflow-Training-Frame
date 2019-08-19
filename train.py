@@ -23,11 +23,11 @@ flags.DEFINE_string('val_record_path',
                     './datasets/val.record', 
                     'Path to validation tfrecord file.')
 flags.DEFINE_string('checkpoint_path',
-                    '/data1/model_zoo/resnet_v1_50.ckpt',
+                    './checkpoint/resnet_v1_50.ckpt',
                     'Path to a pretrained model.')
 flags.DEFINE_string('model_dir', './training', 'Path to log directory.')
 flags.DEFINE_float('keep_checkpoint_every_n_hours', 
-                   0.2,
+                   0.1,
                    'Save model checkpoint every n hours.')
 flags.DEFINE_string('learning_rate_decay_type',
                     'exponential',
@@ -124,7 +124,7 @@ def read_dataset(file_read_fun, input_files, num_readers=1, shuffle=False,
     elif num_readers > 1:
         tf.logging.warning('`shuffle` is false, but the input data stream is '
                            'still slightly shuffled since `num_readers` > 1.')
-    # 根据epochs 进行重复
+    # 根据epochs 数量进行重复
     filename_dataset = filename_dataset.repeat(num_epochs or None)
 
     records_dataset = filename_dataset.apply(
