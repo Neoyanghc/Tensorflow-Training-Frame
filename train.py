@@ -237,22 +237,30 @@ def create_model_fn(features, labels, mode, params=None):
         An `EstimatorSpec` the encapsulates the model and its serving
         configurations.
     """
+    # 定义网络参数
     params = params or {}
+    # 定义网络衡量参数
     loss, acc, train_op, export_outputs = None, None, None, None
+    # 根据mode传参进行匹配，mode 指定训练模式，可以取 （TRAIN, EVAL, PREDICT）三者之一
     is_training = mode == tf.estimator.ModeKeys.TRAIN
     
+    # 根据传入的feature读取图片数据
     cls_model = model.Model(is_training=is_training, 
                             num_classes=FLAGS.num_classes)
+    #预处理，获得输出值，获得预测值
     preprocessed_inputs = cls_model.preprocess(features.get('image'))
     prediction_dict = cls_model.predict(preprocessed_inputs)
     postprocessed_dict = cls_model.postprocess(prediction_dict)
     
+    # train
     if mode == tf.estimator.ModeKeys.TRAIN:
+        #进行对应预训练模型的加载
         if FLAGS.checkpoint_path:
             # checkpoint_exclude_scopes = 'resnet_v1_50/conv1,resnet_v1_50/block1'
             # 指定一些层不加载参数
             init_variables_from_checkpoint()
     
+    # not train
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
         loss_dict = cls_model.loss(prediction_dict, labels)
         loss = loss_dict['loss']
@@ -262,19 +270,22 @@ def create_model_fn(features, labels, mode, params=None):
         tf.summary.scalar('accuracy', acc)
     
     scaffold = None
+    
+    # train
     if mode == tf.estimator.ModeKeys.TRAIN:
+        # 设定步数，设定学习率等等超参数
         global_step = tf.train.get_or_create_global_step()
         learning_rate = configure_learning_rate(FLAGS.decay_steps,
                                                 global_step)
         optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate,
                                                momentum=0.9)
-        # 冻结层设置
+        # 冻结层设置,指定一些层不训练
         # scopes_to_freeze = 'resnet_v1_50/block1,resnet_v1_50/block2/unit_1'
         vars_to_train = get_trainable_variables()        
         train_op = slim.learning.create_train_op(loss, optimizer,
                                                  variables_to_train=vars_to_train,
                                                  summarize_gradients=True)
-        
+        # 多少时间保存一次模型
         keep_checkpoint_every_n_hours = FLAGS.keep_checkpoint_every_n_hours
         saver = tf.train.Saver(
             sharded=True,
@@ -294,7 +305,7 @@ def create_model_fn(features, labels, mode, params=None):
             tf.saved_model.signature_constants.PREDICT_METHOD_NAME:
                 tf.estimator.export.PredictOutput(export_output)}
     
-        
+    # 返回这个实例化对象
     return tf.estimator.EstimatorSpec(mode=mode,
                                       predictions=prediction_dict,
                                       loss=loss,
