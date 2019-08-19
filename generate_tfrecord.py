@@ -95,7 +95,7 @@ def create_tf_example(image_path, label, resize_size=None):
     return tf_example
 
 
-# 利用输入的
+# 利用输入的json文件中的dict进行tfrecord文件的写出
 def generate_tfrecord(annotation_dict, output_path, resize_size=None):
     num_valid_tf_example = 0
     # 创建一个write的实例对象
