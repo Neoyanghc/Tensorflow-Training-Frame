@@ -6,8 +6,12 @@
 '''
 
 import tensorflow as tf
+import numpy as np
 from tensorflow.contrib.slim import nets
 import preprocessing
+import cv2
+import os
+import copy
 slim = tf.contrib.slim
     
         
@@ -34,14 +38,15 @@ class Model(object):
         输出 tensors [batch_size,height, width, num_channels]
         """
         # 调用批处理函数进行处理
-        preprocessed_inputs = preprocessing.preprocess_images(
-            inputs, self._default_image_size, self._default_image_size, 
-            resize_side_min=self._fixed_resize_side,
-            is_training=self._is_training,
-            border_expand=False, normalize=False,
-            preserving_aspect_ratio_resize=False)
-        # 转化数据类型为 float32
-        preprocessed_inputs = tf.cast(preprocessed_inputs, tf.float32)
+        with tf.variable_scope('Preprocess'):
+            preprocessed_inputs = preprocessing.preprocess_images(
+                inputs, self._default_image_size, self._default_image_size, 
+                resize_side_min=self._fixed_resize_side,
+                is_training=self._is_training,
+                border_expand=False, normalize=False,
+                preserving_aspect_ratio_resize=False)
+            # 转化数据类型为 float32
+            preprocessed_inputs = tf.cast(preprocessed_inputs, tf.float32)
         return preprocessed_inputs
     
     def predict(self, preprocessed_inputs):
@@ -56,39 +61,100 @@ class Model(object):
             net, endpoints= nets.resnet_v1.resnet_v1_50(
                 preprocessed_inputs, num_classes=None,
                 is_training=self._is_training)
+        with tf.variable_scope('Top_conv'):   
+            top_conv = endpoints['resnet_v1_50/block4']
         #conv5 = endpoints['resnet/conv5']
         # 为了输入到全连接层，需要用函数 tf.squeeze 去掉形状为 1 的第 1，2 个索引维度。
-        net = tf.squeeze(net, axis=[1, 2])
-        # 将resnet的最后一层输出进行处理，变成二分类
-        logits = slim.fully_connected(net, num_outputs=self.num_classes,
-                                      activation_fn=None, 
-                                      scope='Predict/logits')
-        return {'logits': logits}
+        with tf.variable_scope('Changed_classifier'):
+            squeeze_net = tf.squeeze(net, axis=[1, 2])
+            # 将resnet的最后一层输出进行处理，变成二分类
+            y_pred = slim.fully_connected(squeeze_net, num_outputs=self.num_classes,
+                                        activation_fn=None, 
+                                        scope='Predict/logits')
+                                      
+        with tf.variable_scope('Grad_CAM_Operators'):
+            y_pred_softmax = tf.nn.softmax(y_pred)
+            predicted_class_cam = tf.argmax(y_pred_softmax, 1)
+            one_hot_cam = tf.one_hot(indices=predicted_class_cam, depth=self.num_classes)
+            signal_cam = tf.multiply(y_pred, one_hot_cam)
+            loss_cam = tf.reduce_mean(signal_cam)
+            grads_cam = tf.gradients(loss_cam, top_conv)[0]
+            norm_grads_cam = tf.div(grads_cam,
+                                         tf.sqrt(tf.reduce_mean(tf.square(grads_cam))) + tf.constant(1e-5))
+
+        return {'logits': y_pred}, top_conv, norm_grads_cam
     
+    
+    def grad_cam(self,output,grads_val):
+        
+        # cam的生成函数，输入单张图片的output值，还有反向梯度的值进行计算
+        weights = np.mean(grads_val, axis=(0, 1))
+        cam = np.ones(output.shape[0: 2], dtype=np.float32)
+
+        for i, w in enumerate(weights):
+            cam += w * output[:, :, i]
+        return cam
+    
+    def generate_GradCAM_Image(self,save_dir,single_img,cam,save_name):
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir)
+        
+        origin_img = copy.deepcopy(single_img)
+        origin_img /= np.max(origin_img)
+
+        imgForCal = np.expand_dims(single_img, 0)
+
+        cam = np.maximum(cam, 0)
+        cam = cv2.resize(cam, (self._default_image_size, self._default_image_size),
+                               interpolation=cv2.INTER_CUBIC)
+        cam /= np.max(cam)
+
+        fig, ax = plt.subplots()
+        ax.imshow(origin_img)
+        ax.imshow(cam, cmap=plt.cm.jet, alpha=0.5, 
+                       interpolation='nearest', vmin=0, vmax=1)
+        plt.axis('off')
+
+        height, width, channels = origin_img.shape
+
+        fig.set_size_inches(width / 100.0 / 3.0, height / 100.0 / 3.0)
+        plt.gca().xaxis.set_major_locator(plt.NullLocator())
+        plt.gca().yaxis.set_major_locator(plt.NullLocator())
+        plt.subplots_adjust(top=1, bottom=0, left=0, right=1, hspace=0, wspace=0)
+        plt.margins(0, 0)
+
+        plt.savefig(save_dir + str(save_name) + '.png', dpi=300)
+            # plt.show()
+        plt.close()
+        print("successed save "+ str(save_name) + '.png')
+
     def postprocess(self, prediction_dict):
         # 返回结果dict
         postprocessed_dict = {}
-        for logits_name, logits in prediction_dict.items():
-            logits = tf.nn.softmax(logits)
-            classes = tf.argmax(logits, axis=1)
-            classes_name = logits_name.replace('logits', 'classes')
-            postprocessed_dict[logits_name] = logits
-            postprocessed_dict[classes_name] = classes
+        with tf.variable_scope('Postprocess'):
+            for logits_name, logits in prediction_dict.items():
+                logits = tf.nn.softmax(logits)
+                classes = tf.argmax(logits, axis=1)
+                classes_name = logits_name.replace('logits', 'classes')
+                postprocessed_dict[logits_name] = logits
+                postprocessed_dict[classes_name] = classes
         return postprocessed_dict
     
     def loss(self, prediction_dict, groundtruth_lists):
         # logits，和 y 之间使用cross_entropy
-        logits = prediction_dict.get('logits')
-        slim.losses.sparse_softmax_cross_entropy(logits, groundtruth_lists)
-        loss = slim.losses.get_total_loss()
-        loss_dict = {'loss': loss}
+        with tf.variable_scope('Loss'):
+            logits = prediction_dict.get('logits')
+            slim.losses.sparse_softmax_cross_entropy(logits, groundtruth_lists)
+            loss = slim.losses.get_total_loss()
+            loss_dict = {'loss': loss}
         return loss_dict
         
     def accuracy(self, postprocessed_dict, groundtruth_lists):
         # y_，和 y 之间计算accaury
-        classes = postprocessed_dict['classes']
-        accuracy = tf.reduce_mean(
-            tf.cast(tf.equal(classes, groundtruth_lists), dtype=tf.float32))
+        with tf.variable_scope('Acc'):
+            classes = postprocessed_dict['classes']
+            accuracy = tf.reduce_mean(
+                tf.cast(tf.equal(classes, groundtruth_lists), dtype=tf.float32))
         return accuracy
 
 

@@ -112,30 +112,31 @@ def read_dataset(file_read_fun, input_files, num_readers=1, shuffle=False,
         A tf.data.Dataset of (undecoded) tf-records.
     """
     # Shard, shuffle, and read files
-    filenames = tf.gfile.Glob(input_files)
-    if num_readers > len(filenames):
-        num_readers = len(filenames)
-        tf.logging.warning('num_readers has been reduced to %d to match input '
-                           'file shards.' % num_readers)
-    
-    filename_dataset = tf.data.Dataset.from_tensor_slices(filenames)
-    if shuffle:
-        filename_dataset = filename_dataset.shuffle(100)
-    elif num_readers > 1:
-        tf.logging.warning('`shuffle` is false, but the input data stream is '
-                           'still slightly shuffled since `num_readers` > 1.')
-    # 根据epochs 数量进行重复
-    filename_dataset = filename_dataset.repeat(num_epochs or None)
+    with tf.variable_scope('Read_dateset'):
+        filenames = tf.gfile.Glob(input_files)
+        if num_readers > len(filenames):
+            num_readers = len(filenames)
+            tf.logging.warning('num_readers has been reduced to %d to match input '
+                            'file shards.' % num_readers)
+        
+        filename_dataset = tf.data.Dataset.from_tensor_slices(filenames)
+        if shuffle:
+            filename_dataset = filename_dataset.shuffle(100)
+        elif num_readers > 1:
+            tf.logging.warning('`shuffle` is false, but the input data stream is '
+                            'still slightly shuffled since `num_readers` > 1.')
+        # 根据epochs 数量进行重复
+        filename_dataset = filename_dataset.repeat(num_epochs or None)
 
-    records_dataset = filename_dataset.apply(
-        tf.contrib.data.parallel_interleave(
-            file_read_fun,
-            cycle_length=num_readers,
-            block_length=read_block_length,
-            sloppy=shuffle))
-    
-    if shuffle:
-        records_dataset = records_dataset.shuffle(shuffle_buffer_size)
+        records_dataset = filename_dataset.apply(
+            tf.contrib.data.parallel_interleave(
+                file_read_fun,
+                cycle_length=num_readers,
+                block_length=read_block_length,
+                sloppy=shuffle))
+        
+        if shuffle:
+            records_dataset = records_dataset.shuffle(shuffle_buffer_size)
     return records_dataset  
 
 
@@ -217,7 +218,6 @@ def create_predict_input_fn():
         
     return _predict_input_fn
 
-
 def create_model_fn(features, labels, mode, params=None):
     """Constructs the classification model.
     
@@ -249,7 +249,7 @@ def create_model_fn(features, labels, mode, params=None):
                             num_classes=FLAGS.num_classes)
     #预处理，获得输出值，获得预测值
     preprocessed_inputs = cls_model.preprocess(features.get('image'))
-    prediction_dict = cls_model.predict(preprocessed_inputs)
+    prediction_dict, top_conv, norm_grads_cam= cls_model.predict(preprocessed_inputs)
     postprocessed_dict = cls_model.postprocess(prediction_dict)
     
     # train
@@ -260,7 +260,6 @@ def create_model_fn(features, labels, mode, params=None):
             # 指定一些层不加载参数
             init_variables_from_checkpoint()
     
-    # not train
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
         loss_dict = cls_model.loss(prediction_dict, labels)
         loss = loss_dict['loss']
@@ -297,7 +296,16 @@ def create_model_fn(features, labels, mode, params=None):
     eval_metric_ops = None
     if mode == tf.estimator.ModeKeys.EVAL:
         accuracy = tf.metrics.accuracy(labels=labels, predictions=classes)
-        eval_metric_ops = {'Accuracy': accuracy}
+        eval_metric_ops = {'Eval_Accuracy': accuracy}
+        print(top_conv,norm_grads_cam)
+        for i in range(10):
+            print(top_conv[i],norm_grads_cam[i])
+            print(preprocessed_inputs[i])
+            cam = cls_model.grad_cam(top_conv[i], norm_grads_cam[i])
+            cls_model.generate_GradCAM_Image(save_dir='./Grad_CAM_Split/',
+                                             single_img = preprocessed_inputs[i],
+                                             cam=cam,
+                                             save_name="Gram_cam_"+str(i))
     
     if mode == tf.estimator.ModeKeys.PREDICT:
         export_output = exporter._add_output_tensor_nodes(postprocessed_dict)
@@ -349,8 +357,7 @@ def configure_learning_rate(decay_steps, global_step):
     else:
         raise ValueError('learning_rate_decay_type [%s] was not recognized' %
                          FLAGS.learning_rate_decay_type)
-        
-        
+ 
 def init_variables_from_checkpoint(checkpoint_exclude_scopes=None):
     """Variable initialization form a given checkpoint path.
     # 排除checkpoint_exclude_scopes中的东西
@@ -381,7 +388,6 @@ def init_variables_from_checkpoint(checkpoint_exclude_scopes=None):
         include_global_step=False)
 
     tf.train.init_from_checkpoint(FLAGS.checkpoint_path, available_var_map)
-
     
 def get_variables_available_in_checkpoint(variables,
                                           checkpoint_path,
@@ -463,12 +469,15 @@ def main(_):
                                      batch_size=FLAGS.batch_size)
     train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn,
                                         max_steps=FLAGS.num_steps)
+    
+    predict_input_fn = create_predict_input_fn()
+
+    eval_exporter = tf.estimator.FinalExporter(
+        name='servo', serving_input_receiver_fn=predict_input_fn)
+    
     eval_input_fn = create_input_fn([FLAGS.val_record_path], 
                                     batch_size=FLAGS.batch_size,
                                     num_epochs=1)
-    predict_input_fn = create_predict_input_fn()
-    eval_exporter = tf.estimator.FinalExporter(
-        name='servo', serving_input_receiver_fn=predict_input_fn)
     eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=None,
                                       exporters=eval_exporter)
     
