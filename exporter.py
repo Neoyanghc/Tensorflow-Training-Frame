@@ -256,9 +256,15 @@ def _get_outputs_from_inputs(input_tensors, model,
                              output_collection_name):
     inputs = tf.to_float(input_tensors)
     preprocessed_inputs = model.preprocess(inputs)
-    output_tensors = model.predict(preprocessed_inputs)
+    output_tensors,top_conv,norm_grads_cam = model.predict(preprocessed_inputs)
     postprocessed_tensors = model.postprocess(output_tensors)
-    return _add_output_tensor_nodes(postprocessed_tensors,
+    new_out = {}
+    for key, value in postprocessed_tensors.items():
+        new_out[key] = value
+    new_out['top_conv1'] = top_conv
+    new_out['grad'] = norm_grads_cam
+
+    return _add_output_tensor_nodes(new_out,
                                     output_collection_name)
     
     

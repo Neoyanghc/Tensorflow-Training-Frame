@@ -61,6 +61,7 @@ class Model(object):
             net, endpoints= nets.resnet_v1.resnet_v1_50(
                 preprocessed_inputs, num_classes=None,
                 is_training=self._is_training)
+        
         with tf.variable_scope('Top_conv'):   
             top_conv = endpoints['resnet_v1_50/block4']
         #conv5 = endpoints['resnet/conv5']
@@ -83,51 +84,7 @@ class Model(object):
                                          tf.sqrt(tf.reduce_mean(tf.square(grads_cam))) + tf.constant(1e-5))
 
         return {'logits': y_pred}, top_conv, norm_grads_cam
-    
-    
-    def grad_cam(self,output,grads_val):
         
-        # cam的生成函数，输入单张图片的output值，还有反向梯度的值进行计算
-        weights = np.mean(grads_val, axis=(0, 1))
-        cam = np.ones(output.shape[0: 2], dtype=np.float32)
-
-        for i, w in enumerate(weights):
-            cam += w * output[:, :, i]
-        return cam
-    
-    def generate_GradCAM_Image(self,save_dir,single_img,cam,save_name):
-        if not os.path.isdir(save_dir):
-            os.makedirs(save_dir)
-        
-        origin_img = copy.deepcopy(single_img)
-        origin_img /= np.max(origin_img)
-
-        imgForCal = np.expand_dims(single_img, 0)
-
-        cam = np.maximum(cam, 0)
-        cam = cv2.resize(cam, (self._default_image_size, self._default_image_size),
-                               interpolation=cv2.INTER_CUBIC)
-        cam /= np.max(cam)
-
-        fig, ax = plt.subplots()
-        ax.imshow(origin_img)
-        ax.imshow(cam, cmap=plt.cm.jet, alpha=0.5, 
-                       interpolation='nearest', vmin=0, vmax=1)
-        plt.axis('off')
-
-        height, width, channels = origin_img.shape
-
-        fig.set_size_inches(width / 100.0 / 3.0, height / 100.0 / 3.0)
-        plt.gca().xaxis.set_major_locator(plt.NullLocator())
-        plt.gca().yaxis.set_major_locator(plt.NullLocator())
-        plt.subplots_adjust(top=1, bottom=0, left=0, right=1, hspace=0, wspace=0)
-        plt.margins(0, 0)
-
-        plt.savefig(save_dir + str(save_name) + '.png', dpi=300)
-            # plt.show()
-        plt.close()
-        print("successed save "+ str(save_name) + '.png')
-
     def postprocess(self, prediction_dict):
         # 返回结果dict
         postprocessed_dict = {}

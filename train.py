@@ -153,36 +153,37 @@ def create_input_fn(record_paths, batch_size=64,
     """
     def _input_fn():
         # 先实现decoder实例
-        decoder = get_decoder()
-        
-        def decode(value):
-            keys = decoder.list_items()
-            tensors = decoder.decode(value)
-            # zip 将键值和value反过来
-            tensor_dict = dict(zip(keys, tensors))
-            image = tensor_dict.get('image')
-            # 读图片进行处理
-            image = transform_data(image)
-            features_dict = {'image': image}
-            return features_dict, tensor_dict.get('label')
-        
-        dataset = read_dataset(
-            functools.partial(tf.data.TFRecordDataset, 
-                              buffer_size=8 * 1000 * 1000),
-            input_files=record_paths,
-            num_epochs=num_epochs)
-        
-        if batch_size:
-            num_parallel_calles = batch_size * num_parallel_batches
-        else:
-            num_parallel_calles = num_parallel_batches
-        dataset = dataset.map(decode, num_parallel_calls=num_parallel_calles)
+        with tf.variable_scope('Read_dateset'):
+            decoder = get_decoder()
+            
+            def decode(value):
+                keys = decoder.list_items()
+                tensors = decoder.decode(value)
+                # zip 将键值和value反过来
+                tensor_dict = dict(zip(keys, tensors))
+                image = tensor_dict.get('image')
+                # 读图片进行处理
+                image = transform_data(image)
+                features_dict = {'image': image}
+                return features_dict, tensor_dict.get('label')
+            
+            dataset = read_dataset(
+                functools.partial(tf.data.TFRecordDataset, 
+                                buffer_size=8 * 1000 * 1000),
+                input_files=record_paths,
+                num_epochs=num_epochs)
+            
+            if batch_size:
+                num_parallel_calles = batch_size * num_parallel_batches
+            else:
+                num_parallel_calles = num_parallel_batches
+            dataset = dataset.map(decode, num_parallel_calls=num_parallel_calles)
 
-        if batch_size:
-            dataset = dataset.apply(
-                tf.contrib.data.batch_and_drop_remainder(batch_size))
-        dataset = dataset.prefetch(num_prefetch_batches)
-        return dataset
+            if batch_size:
+                dataset = dataset.apply(
+                    tf.contrib.data.batch_and_drop_remainder(batch_size))
+            dataset = dataset.prefetch(num_prefetch_batches)
+            return dataset
     
     return _input_fn
 
@@ -294,18 +295,11 @@ def create_model_fn(features, labels, mode, params=None):
         scaffold = tf.train.Scaffold(saver=saver)
         
     eval_metric_ops = None
+
     if mode == tf.estimator.ModeKeys.EVAL:
         accuracy = tf.metrics.accuracy(labels=labels, predictions=classes)
         eval_metric_ops = {'Eval_Accuracy': accuracy}
-        print(top_conv,norm_grads_cam)
-        for i in range(10):
-            print(top_conv[i],norm_grads_cam[i])
-            print(preprocessed_inputs[i])
-            cam = cls_model.grad_cam(top_conv[i], norm_grads_cam[i])
-            cls_model.generate_GradCAM_Image(save_dir='./Grad_CAM_Split/',
-                                             single_img = preprocessed_inputs[i],
-                                             cam=cam,
-                                             save_name="Gram_cam_"+str(i))
+
     
     if mode == tf.estimator.ModeKeys.PREDICT:
         export_output = exporter._add_output_tensor_nodes(postprocessed_dict)
