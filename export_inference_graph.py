@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 30 15:46:16 2018
-
-@author: shirhe-lyh
-"""
 
 """Tool to export a model for inference.
 
@@ -29,15 +24,7 @@ python/python3 export_inference_graph \
     --input_type image_tensor \
     --trained_checkpoint_prefix path/to/model.ckpt \
     --output_directory path/to/exported_model_directory
-    
-The exported output would be in the directory
-path/to/exported_model_directory (which is created if it does not exist)
-with contents:
-    - model.ckpt.data-00000-of-00001
-    - model.ckpt.info
-    - model.ckpt.meta
-    - frozen_inference_graph.pb
-    + saved_model (a directory)
+
 """
 
 import os
