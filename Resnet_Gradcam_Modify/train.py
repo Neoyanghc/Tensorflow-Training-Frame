@@ -23,9 +23,9 @@ flags.DEFINE_string('val_record_path',
                     './datasets/val.record', 
                     'Path to validation tfrecord file.')
 flags.DEFINE_string('checkpoint_path',
-                    './checkpoint/resnet_v1_50.ckpt',
+                    './checkpoint/inception_v4.ckpt',
                     'Path to a pretrained model.')
-flags.DEFINE_string('model_dir', './training', 'Path to log directory.')
+flags.DEFINE_string('model_dir', './training_3', 'Path to log directory.')
 flags.DEFINE_float('keep_checkpoint_every_n_hours', 
                    0.1,
                    'Save model checkpoint every n hours.')
@@ -266,7 +266,7 @@ def create_model_fn(features, labels, mode, params=None):
         loss = loss_dict['loss']
         classes = postprocessed_dict['classes']
         add_loss = cls_model.add_loss_of_variance(classes,top_conv)
-        add_loss = add_loss * 0.01
+        add_loss = add_loss * 0.05
         loss = tf.add(loss,add_loss)
         acc = tf.reduce_mean(tf.cast(tf.equal(classes, labels), 'float'))
         tf.summary.scalar('loss', loss)

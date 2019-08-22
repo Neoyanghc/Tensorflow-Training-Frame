@@ -57,13 +57,19 @@ class Model(object):
         """
 
         # resnet_v1_50 函数返回的形状为 [None, 1, 1, num]，
-        with slim.arg_scope(nets.resnet_v1.resnet_arg_scope()):
-            net, endpoints= nets.resnet_v1.resnet_v1_50(
+        # with slim.arg_scope(nets.resnet_v1.resnet_arg_scope()):
+        #     net, endpoints= nets.resnet_v1.resnet_v1_50(
+        #         preprocessed_inputs, num_classes=None,
+        #         is_training=self._is_training)
+
+        #        inception_v4
+        with slim.arg_scope(nets.inception_v4.inception_v4_arg_scope()):
+            net, endpoints= nets.inception_v4.inception_v4(
                 preprocessed_inputs, num_classes=None,
                 is_training=self._is_training)
-        
+
         with tf.variable_scope('Top_conv'):   
-            top_conv = endpoints['resnet_v1_50/block4']
+            top_conv = endpoints['inception_v4/Mixed_6h']
         #conv5 = endpoints['resnet/conv5']
         # 为了输入到全连接层，需要用函数 tf.squeeze 去掉形状为 1 的第 1，2 个索引维度。
         with tf.variable_scope('Changed_classifier'):
