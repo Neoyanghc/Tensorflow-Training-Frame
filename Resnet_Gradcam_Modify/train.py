@@ -265,6 +265,9 @@ def create_model_fn(features, labels, mode, params=None):
         loss_dict = cls_model.loss(prediction_dict, labels)
         loss = loss_dict['loss']
         classes = postprocessed_dict['classes']
+        add_loss = cls_model.add_loss_of_variance(classes,top_conv)
+        add_loss = add_loss * 0.01
+        loss = tf.add(loss,add_loss)
         acc = tf.reduce_mean(tf.cast(tf.equal(classes, labels), 'float'))
         tf.summary.scalar('loss', loss)
         tf.summary.scalar('accuracy', acc)

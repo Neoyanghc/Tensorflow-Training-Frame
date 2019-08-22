@@ -97,6 +97,7 @@ class Model(object):
                 postprocessed_dict[classes_name] = classes
         return postprocessed_dict
     
+    # 在model的loss上面下手
     def loss(self, prediction_dict, groundtruth_lists):
         # logits，和 y 之间使用cross_entropy
         with tf.variable_scope('Loss'):
@@ -113,5 +114,31 @@ class Model(object):
             accuracy = tf.reduce_mean(
                 tf.cast(tf.equal(classes, groundtruth_lists), dtype=tf.float32))
         return accuracy
+    
+    def add_loss_of_variance(self, classes, topconv):
+        # 利用topconv，GAP之后的值进行聚类，得到距离均值然后进行loss
+        with tf.variable_scope('Add_loss'):
+            gap = tf.reduce_mean(topconv, (1, 2))
+            # ksize = topconv.get_shape()[1]
+            # stride = topconv.get_shape()[1]
+            # gap = tf.nn.avg_pool(topconv, ksize=[1, ksize, ksize, 1], 
+            #             strides=[1, stride, stride, 1], padding='VALID')
+            idx = tf.where(tf.equal(classes,0))
+            gap_0 = tf.gather_nd(gap, idx)
+
+            idx = tf.where(tf.equal(classes,1))
+            gap_1 = tf.gather_nd(gap, idx)
+
+            center_0 = tf.reduce_mean(gap_0, 0)
+            center_1 = tf.reduce_mean(gap_1, 0)
+
+            dis0 = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.square(center_0 - gap_0), axis=1)))
+            dis1 = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.square(center_1 - gap_1), axis=1)))
+
+            add_loss = tf.add(dis0,dis1)
+        
+        return add_loss
+       
+
 
 
