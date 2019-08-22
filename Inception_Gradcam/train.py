@@ -15,7 +15,7 @@ import model
 slim = tf.contrib.slim
 
 flags = tf.app.flags
-flags.DEFINE_string('gpu_indices', '0', 'The index of gpus to used.')
+flags.DEFINE_string('gpu_indices', '1', 'The index of gpus to used.')
 flags.DEFINE_string('train_record_path', 
                     './datasets/train.record', 
                     'Path to training tfrecord file.')
@@ -23,9 +23,9 @@ flags.DEFINE_string('val_record_path',
                     './datasets/val.record', 
                     'Path to validation tfrecord file.')
 flags.DEFINE_string('checkpoint_path',
-                    './checkpoint/inception_v4.ckpt',
+                    './checkpoint/inception_v3.ckpt',
                     'Path to a pretrained model.')
-flags.DEFINE_string('model_dir', './training_3', 'Path to log directory.')
+flags.DEFINE_string('model_dir', './training_4', 'Path to log directory.')
 flags.DEFINE_float('keep_checkpoint_every_n_hours', 
                    0.1,
                    'Save model checkpoint every n hours.')
@@ -51,7 +51,7 @@ flags.DEFINE_float('learning_rate_decay_factor',
                    0.5,
                    'Learning rate decay factor.')
 flags.DEFINE_integer('num_classes', 2, 'Number of classes.')
-flags.DEFINE_integer('batch_size', 64, 'Batch size.')
+flags.DEFINE_integer('batch_size', 128, 'Batch size.')
 flags.DEFINE_integer('num_steps', 5000, 'Number of steps.')
 flags.DEFINE_integer('input_size', 224, 'Size of picture.')
 

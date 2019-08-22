@@ -6,12 +6,11 @@
 '''
 
 import tensorflow as tf
-import numpy as np
 from tensorflow.contrib.slim import nets
 import preprocessing
-import cv2
-import os
-import copy
+
+
+
 slim = tf.contrib.slim
     
         
@@ -63,17 +62,18 @@ class Model(object):
         #         is_training=self._is_training)
 
         #        inception_v4
-        with slim.arg_scope(nets.inception_v4.inception_v4_arg_scope()):
-            net, endpoints= nets.inception_v4.inception_v4(
-                preprocessed_inputs, num_classes=None,
-                is_training=self._is_training)
+        with slim.arg_scope(nets.inception.inception_v3_arg_scope()):
+            net, endpoints= nets.inception.inception_v3_base(preprocessed_inputs)
+            
 
         with tf.variable_scope('Top_conv'):   
-            top_conv = endpoints['inception_v4/Mixed_6h']
+            top_conv = endpoints['Mixed_6e']
         #conv5 = endpoints['resnet/conv5']
         # 为了输入到全连接层，需要用函数 tf.squeeze 去掉形状为 1 的第 1，2 个索引维度。
         with tf.variable_scope('Changed_classifier'):
-            squeeze_net = tf.squeeze(net, axis=[1, 2])
+            # kernel_size = nets.inception._reduced_kernel_size_for_small_input(net, [8, 8])
+            avg_net = slim.avg_pool2d(net, [5,5], padding='VALID')
+            squeeze_net = tf.squeeze(avg_net, [1, 2])
             # 将resnet的最后一层输出进行处理，变成二分类
             y_pred = slim.fully_connected(squeeze_net, num_outputs=self.num_classes,
                                         activation_fn=None, 
