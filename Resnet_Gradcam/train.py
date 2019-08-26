@@ -25,7 +25,7 @@ flags.DEFINE_string('val_record_path',
 flags.DEFINE_string('checkpoint_path',
                     './checkpoint/resnet_v1_50.ckpt',
                     'Path to a pretrained model.')
-flags.DEFINE_string('model_dir', './training2', 'Path to log directory.')
+flags.DEFINE_string('model_dir', './training', 'Path to log directory.')
 flags.DEFINE_float('keep_checkpoint_every_n_hours', 
                    0.1,
                    'Save model checkpoint every n hours.')
@@ -37,7 +37,7 @@ flags.DEFINE_float('learning_rate',
                    0.0001, 
                    'Initial learning rate.')
 flags.DEFINE_float('end_learning_rate', 
-                   0.0000001,
+                   0.000001,
                    'The minimal end learning rate used by a polynomial decay '
                    'learning rate.')
 flags.DEFINE_float('decay_steps',
@@ -52,8 +52,8 @@ flags.DEFINE_float('learning_rate_decay_factor',
                    'Learning rate decay factor.')
 flags.DEFINE_integer('num_classes', 10, 'Number of classes.')
 flags.DEFINE_integer('batch_size', 64, 'Batch size.')
-flags.DEFINE_integer('num_steps', 5000, 'Number of steps.')
-flags.DEFINE_integer('input_size', 224, 'Size of picture.')
+flags.DEFINE_integer('num_steps', 10000, 'Number of steps.')
+flags.DEFINE_integer('input_size', 32, 'Size of picture.')
 
 
 FLAGS = flags.FLAGS
@@ -86,7 +86,7 @@ def get_decoder():
     
 def transform_data(image):
     # 把数据进行处理，进行放大224-256
-    size = FLAGS.input_size + 32
+    size = FLAGS.input_size 
     image = tf.squeeze(tf.image.resize_bilinear([image], size=[size, size]))
     image = tf.to_float(image)
     return image
@@ -277,8 +277,10 @@ def create_model_fn(features, labels, mode, params=None):
         global_step = tf.train.get_or_create_global_step()
         learning_rate = configure_learning_rate(FLAGS.decay_steps,
                                                 global_step)
-        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate,
-                                               momentum=0.9)
+        # optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
+        #                                        momentum=0.9)
+        optimizer=tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.9, beta2=0.999, 
+                                                epsilon=1e-08)
         # 冻结层设置,指定一些层不训练
         # scopes_to_freeze = 'resnet_v1_50/block1,resnet_v1_50/block2/unit_1'
         vars_to_train = get_trainable_variables()        
