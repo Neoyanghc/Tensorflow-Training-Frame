@@ -25,7 +25,7 @@ flags.DEFINE_string('val_record_path',
 flags.DEFINE_string('checkpoint_path',
                     './checkpoint/inception_v3.ckpt',
                     'Path to a pretrained model.')
-flags.DEFINE_string('model_dir', './training_4', 'Path to log directory.')
+flags.DEFINE_string('model_dir', './training_5', 'Path to log directory.')
 flags.DEFINE_float('keep_checkpoint_every_n_hours', 
                    0.1,
                    'Save model checkpoint every n hours.')
@@ -51,7 +51,7 @@ flags.DEFINE_float('learning_rate_decay_factor',
                    0.5,
                    'Learning rate decay factor.')
 flags.DEFINE_integer('num_classes', 2, 'Number of classes.')
-flags.DEFINE_integer('batch_size', 128, 'Batch size.')
+flags.DEFINE_integer('batch_size', 64, 'Batch size.')
 flags.DEFINE_integer('num_steps', 5000, 'Number of steps.')
 flags.DEFINE_integer('input_size', 224, 'Size of picture.')
 
@@ -266,7 +266,7 @@ def create_model_fn(features, labels, mode, params=None):
         loss = loss_dict['loss']
         classes = postprocessed_dict['classes']
         add_loss = cls_model.add_loss_of_variance(classes,top_conv)
-        add_loss = add_loss * 0.05
+        add_loss = add_loss * 0.01
         loss = tf.add(loss,add_loss)
         acc = tf.reduce_mean(tf.cast(tf.equal(classes, labels), 'float'))
         tf.summary.scalar('loss', loss)

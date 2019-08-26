@@ -17,14 +17,14 @@ import tensorflow as tf
 import time
 from PIL import Image
 # import data_provider 引入对应的data provide 文件
-from cat_vs_dog_data_provide import *
+from cifar_10_data_provide import *
 
 
 # 对应参数 说明
 flags = tf.app.flags
 # TODO
 flags.DEFINE_string('images_dir', 
-                    '/data/jiaqi/yhc/kagger/train/train',
+                    '/data/jiaqi/yhc/cifar-10-batches-py',
                     'Path to images (directory).')
 flags.DEFINE_string('train_annotation_path', 
                     './datasets/train.json',
@@ -39,7 +39,7 @@ flags.DEFINE_string('val_output_path',
                     './datasets/val.record',
                     'Path to output tfrecord file.')
 # TODO
-flags.DEFINE_integer('resize_side_size', 256, 'Resize images to fixed size.')
+flags.DEFINE_integer('resize_side_size',32, 'Resize images to fixed size.')
 FLAGS = flags.FLAGS
 
 

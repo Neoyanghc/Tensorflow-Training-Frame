@@ -18,9 +18,9 @@ slim = tf.contrib.slim
 class Model(object):
     
     def __init__(self, is_training,
-                 num_classes=2,
-                 fixed_resize_side=256,
-                 default_image_size=224):
+                 num_classes=10,
+                 fixed_resize_side=32,
+                 default_image_size=32):
         # model 模型初始化，传入的参数类型
         self._num_classes = num_classes
         self._is_training = is_training

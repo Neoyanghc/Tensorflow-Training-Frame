@@ -25,7 +25,7 @@ flags.DEFINE_string('val_record_path',
 flags.DEFINE_string('checkpoint_path',
                     './checkpoint/resnet_v1_50.ckpt',
                     'Path to a pretrained model.')
-flags.DEFINE_string('model_dir', './training', 'Path to log directory.')
+flags.DEFINE_string('model_dir', './training2', 'Path to log directory.')
 flags.DEFINE_float('keep_checkpoint_every_n_hours', 
                    0.1,
                    'Save model checkpoint every n hours.')
@@ -37,7 +37,7 @@ flags.DEFINE_float('learning_rate',
                    0.0001, 
                    'Initial learning rate.')
 flags.DEFINE_float('end_learning_rate', 
-                   0.000001,
+                   0.0000001,
                    'The minimal end learning rate used by a polynomial decay '
                    'learning rate.')
 flags.DEFINE_float('decay_steps',
@@ -50,7 +50,7 @@ flags.DEFINE_float('decay_steps',
 flags.DEFINE_float('learning_rate_decay_factor',
                    0.5,
                    'Learning rate decay factor.')
-flags.DEFINE_integer('num_classes', 2, 'Number of classes.')
+flags.DEFINE_integer('num_classes', 10, 'Number of classes.')
 flags.DEFINE_integer('batch_size', 64, 'Batch size.')
 flags.DEFINE_integer('num_steps', 5000, 'Number of steps.')
 flags.DEFINE_integer('input_size', 224, 'Size of picture.')
