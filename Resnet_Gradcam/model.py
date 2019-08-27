@@ -113,5 +113,23 @@ class Model(object):
             accuracy = tf.reduce_mean(
                 tf.cast(tf.equal(classes, groundtruth_lists), dtype=tf.float32))
         return accuracy
+    
+    def add_loss_of_variance(self, classes, topconv):
+        # 利用topconv，GAP之后的值进行聚类，得到距离均值然后进行loss
+        with tf.variable_scope('Add_loss'):
+            gaps = tf.reduce_mean(topconv, (1, 2))
+            # ksize = topconv.get_shape()[1]
+            # stride = topconv.get_shape()[1]
+            # gap = tf.nn.avg_pool(topconv, ksize=[1, ksize, ksize, 1], 
+            #             strides=[1, stride, stride, 1], padding='VALID')
+            add = []
+            for i in range(self._num_classes):
+                idx = tf.where(tf.equal(classes,i))
+                gap = tf.gather_nd(gaps, idx)
+                center = tf.reduce_mean(gap, 0)
+                dis = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.square(center - gap), axis=1)))
+                add.append(dis)
+            add_loss = tf.reduce_mean(add,0)
+        return add_loss
 
 

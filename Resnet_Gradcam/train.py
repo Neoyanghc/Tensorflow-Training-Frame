@@ -25,7 +25,7 @@ flags.DEFINE_string('val_record_path',
 flags.DEFINE_string('checkpoint_path',
                     './checkpoint/resnet_v1_50.ckpt',
                     'Path to a pretrained model.')
-flags.DEFINE_string('model_dir', './training', 'Path to log directory.')
+flags.DEFINE_string('model_dir', './batch_size512_changed_labma0.03_5000', 'Path to log directory.')
 flags.DEFINE_float('keep_checkpoint_every_n_hours', 
                    0.1,
                    'Save model checkpoint every n hours.')
@@ -51,8 +51,8 @@ flags.DEFINE_float('learning_rate_decay_factor',
                    0.5,
                    'Learning rate decay factor.')
 flags.DEFINE_integer('num_classes', 10, 'Number of classes.')
-flags.DEFINE_integer('batch_size', 64, 'Batch size.')
-flags.DEFINE_integer('num_steps', 10000, 'Number of steps.')
+flags.DEFINE_integer('batch_size', 512, 'Batch size.')
+flags.DEFINE_integer('num_steps', 5000, 'Number of steps.')
 flags.DEFINE_integer('input_size', 32, 'Size of picture.')
 
 
@@ -265,6 +265,9 @@ def create_model_fn(features, labels, mode, params=None):
         loss_dict = cls_model.loss(prediction_dict, labels)
         loss = loss_dict['loss']
         classes = postprocessed_dict['classes']
+        add_loss = cls_model.add_loss_of_variance(classes,top_conv)
+        add_loss = add_loss * 0.03
+        loss = tf.add(loss,add_loss)
         acc = tf.reduce_mean(tf.cast(tf.equal(classes, labels), 'float'))
         tf.summary.scalar('loss', loss)
         tf.summary.scalar('accuracy', acc)
