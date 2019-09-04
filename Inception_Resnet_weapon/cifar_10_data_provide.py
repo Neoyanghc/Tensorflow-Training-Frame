@@ -1,16 +1,45 @@
-# -*- coding: utf-8 -*-
-'''
-   provide.py 文件
-   主要读入图片数据 将 .jpg 生成json(也可以不这么做)
-   return image_file(all path) 和 一个dict['all path':all label]               
-'''
 import glob
 import json
 import os
+import pickle
+import matplotlib.pyplot as plt
+import numpy as np
+
+# 解压缩，返回解压后的字典
+def unpickle(file):
+    fo = open(file, 'rb')
+    dict = pickle.load(fo, encoding='latin1')
+    fo.close()
+    return dict
+
+def save_to_jpg(images_dir):
+    # 生成训练集图片，如果需要png格式，只需要改图片后缀名即可。
+    if not os.path.exists(images_dir):
+        raise ValueError('`images_dir` does not exist.')
+     
+    for j in range(1, 6):
+        dataName = images_dir +"data_batch_" + str(j)
+        Xtr = unpickle(dataName)
+        print(dataName + " is loading...")
+        for i in range(0, 10000):
+            img = np.reshape(Xtr['data'][i], (3, 32, 32))  
+            # Xtr['data']为图片二进制数据
+            img = img.transpose(1, 2, 0)  # 读取image
+            picName = 'data/jiaqi/yhc/cifar/train/'+ str(i + (j - 1)*10000)+'_' + str(Xtr['labels'][i]) + '.jpg'
+            plt.imsave(picName, img)
+        print(dataName + " loaded.")
+    print("test_batch is loading...")
+    
+    testXtr = unpickle(images_dir+"test_batch")
+    for i in range(0, 10000):
+        img = np.reshape(testXtr['data'][i], (3, 32, 32))
+        img = img.transpose(1, 2, 0)
+        picName = 'data/jiaqi/yhc/cifar/test/' + str(i)  + '_' + str(testXtr['labels'][i]) +'.jpg'
+        plt.imsave(picName, img)
+    print("test_batch loaded.")
 
 
-# 传入图片.jpg存放的地址，然后将其分为,train_dict 和 val_dict，dict为[path,label]
-def split_train_val_sets(images_dir, val_ratio=0.2):
+def split_train_val_sets(images_dir):
     if not os.path.exists(images_dir):
         raise ValueError('`images_dir` does not exist.')
     # image_files 为寻找到的所有的图片路径名
@@ -18,33 +47,30 @@ def split_train_val_sets(images_dir, val_ratio=0.2):
     image_files = glob.glob(os.path.join(images_dir, '*.jpg'))
 
     # 进行分割
-    num_val_samples = int(len(image_files) * val_ratio)
-    val_files = image_files[:num_val_samples]
-    train_files = image_files[num_val_samples:]
+    train_files = []
+    val_files = []
+    for i in image_files:
+        name = i.split('/')[-1]
+        if name[1] == "r":
+            train_files.append(i)
+        else:
+            val_files.append(i)
     
-
     train_dict = _get_labling_dict(train_files)
     val_dict = _get_labling_dict(val_files)
     return train_dict, val_dict
 
-# 获取图片对应的label，并返回dict字典
 def _get_labling_dict(image_files=None):
     if image_files is None:
         return None
-    # kagger，猫vs狗数据集的处理方式
-    # 其他数据集，主要修改这里
+    # cifar 数据的打开方式
     labling_dict = {}
     for image_file in image_files:
-        image_name = image_file.split('/')[-1]
-        if image_name.startswith('cat'):
-            labling_dict[image_file] = 0
-        elif image_name.startswith('dog'):
-            labling_dict[image_file] = 1
+        image_name = image_file.split('.')[0]
+        labling_dict[image_file] = int(image_name[-1])
     return labling_dict
 
 
-
-# 将dict写入json文件中
 def write_annotation_json(images_dir, train_json_output_path, 
                           val_json_output_path):
     train_files_dict, val_files_dict = split_train_val_sets(images_dir)
@@ -80,3 +106,6 @@ def provide(annotation_path=None, images_dir=None):
         annotation_dict[image_name] = labels
     return annotation_dict
 
+
+# if __name__ == '__main__':
+#     save_to_jpg('/data/jiaqi/yhc/cifar-10-batches-py/')
