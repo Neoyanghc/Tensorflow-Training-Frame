@@ -16,30 +16,32 @@ import io
 import tensorflow as tf
 import time
 from PIL import Image
+from PIL import ImageFile
 # import data_provider 引入对应的data provide 文件
-from cifar_10_data_provide import *
+from weapon_data_provide import *
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # 对应参数 说明
 flags = tf.app.flags
 # TODO
 flags.DEFINE_string('images_dir', 
-                    '/data/jiaqi/yhc/cifar-10-batches-py',
+                    '/data/jinping/weapon_onepixel',
                     'Path to images (directory).')
 flags.DEFINE_string('train_annotation_path', 
-                    './datasets/train.json',
+                    '/data/jinping/weapon_onepixel/datasets/train.json',
                     'Path to annotation`s .json file.')
 flags.DEFINE_string('train_output_path', 
-                    './datasets/train.record',
+                    '/data/jinping/weapon_onepixel/datasets/train.record',
                     'Path to output tfrecord file.')
 flags.DEFINE_string('val_annotation_path', 
-                    './datasets/val.json',
+                    '/data/jinping/weapon_onepixel/datasets/val.json',
                     'Path to annotation`s .json file.')
 flags.DEFINE_string('val_output_path', 
-                    './datasets/val.record',
+                    '/data/jinping/weapon_onepixel/datasets/val.record',
                     'Path to output tfrecord file.')
 # TODO
-flags.DEFINE_integer('resize_side_size',32, 'Resize images to fixed size.')
+flags.DEFINE_integer('resize_side_size',299, 'Resize images to fixed size.')
 FLAGS = flags.FLAGS
 
 
@@ -80,6 +82,7 @@ def create_tf_example(image_path, label, resize_size=None):
             width = resize_size
             height = int(height * resize_size / width)
         image = image.resize((width, height), Image.ANTIALIAS)
+        image = image.convert('RGB')
         bytes_io = io.BytesIO()
         image.save(bytes_io, format='JPEG')
         encoded_jpg = bytes_io.getvalue()

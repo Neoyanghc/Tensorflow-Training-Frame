@@ -17,15 +17,15 @@ slim = tf.contrib.slim
 flags = tf.app.flags
 flags.DEFINE_string('gpu_indices', '0', 'The index of gpus to used.')
 flags.DEFINE_string('train_record_path', 
-                    './datasets/train.record', 
+                    '/data/jinping/weapon_onepixel/datasets/train.record', 
                     'Path to training tfrecord file.')
 flags.DEFINE_string('val_record_path', 
-                    './datasets/val.record', 
+                    '/data/jinping/weapon_onepixel/datasets/val.record', 
                     'Path to validation tfrecord file.')
 flags.DEFINE_string('checkpoint_path',
-                    './checkpoint/resnet_v1_50.ckpt',
+                    './checkpoint/inception_resnet_v2_2016_08_30.ckpt',
                     'Path to a pretrained model.')
-flags.DEFINE_string('model_dir', './batch_size512_changed_labma0.03_5000', 'Path to log directory.')
+flags.DEFINE_string('model_dir', './batch_size16', 'Path to log directory.')
 flags.DEFINE_float('keep_checkpoint_every_n_hours', 
                    0.1,
                    'Save model checkpoint every n hours.')
@@ -50,10 +50,10 @@ flags.DEFINE_float('decay_steps',
 flags.DEFINE_float('learning_rate_decay_factor',
                    0.5,
                    'Learning rate decay factor.')
-flags.DEFINE_integer('num_classes', 10, 'Number of classes.')
-flags.DEFINE_integer('batch_size', 512, 'Batch size.')
-flags.DEFINE_integer('num_steps', 5000, 'Number of steps.')
-flags.DEFINE_integer('input_size', 32, 'Size of picture.')
+flags.DEFINE_integer('num_classes', 20, 'Number of classes.')
+flags.DEFINE_integer('batch_size', 16, 'Batch size.')
+flags.DEFINE_integer('num_steps', 500, 'Number of steps.')
+flags.DEFINE_integer('input_size', 299, 'Size of picture.')
 
 
 FLAGS = flags.FLAGS
@@ -265,9 +265,9 @@ def create_model_fn(features, labels, mode, params=None):
         loss_dict = cls_model.loss(prediction_dict, labels)
         loss = loss_dict['loss']
         classes = postprocessed_dict['classes']
-        add_loss = cls_model.add_loss_of_variance(classes,top_conv)
-        add_loss = add_loss * 0.03
-        loss = tf.add(loss,add_loss)
+        # add_loss = cls_model.add_loss_of_variance(classes,top_conv)
+        # add_loss = add_loss * 0.03
+        # loss = tf.add(loss,add_loss)
         acc = tf.reduce_mean(tf.cast(tf.equal(classes, labels), 'float'))
         tf.summary.scalar('loss', loss)
         tf.summary.scalar('accuracy', acc)

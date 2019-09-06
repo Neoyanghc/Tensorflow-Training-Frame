@@ -18,9 +18,9 @@ slim = tf.contrib.slim
 class Model(object):
     
     def __init__(self, is_training,
-                 num_classes=10,
-                 fixed_resize_side=32,
-                 default_image_size=32):
+                 num_classes=20,
+                 fixed_resize_side=299,
+                 default_image_size=299):
         # model 模型初始化，传入的参数类型
         self._num_classes = num_classes
         self._is_training = is_training
@@ -57,21 +57,22 @@ class Model(object):
         """
 
         # resnet_v1_50 函数返回的形状为 [None, 1, 1, num]，
-        with slim.arg_scope(nets.resnet_v1.resnet_arg_scope()):
-            net, endpoints= nets.resnet_v1.resnet_v1_50(
-                preprocessed_inputs, num_classes=None,
+        with slim.arg_scope(nets.inception_resnet_v2.inception_resnet_v2_arg_scope()):
+            net, endpoints= nets.inception_resnet_v2.inception_resnet_v2(
+                preprocessed_inputs, num_classes=self._num_classes,
                 is_training=self._is_training)
         
         with tf.variable_scope('Top_conv'):   
-            top_conv = endpoints['resnet_v1_50/block4']
+            top_conv = endpoints['inception_resnet_v2/Mixed_7a']
         #conv5 = endpoints['resnet/conv5']
         # 为了输入到全连接层，需要用函数 tf.squeeze 去掉形状为 1 的第 1，2 个索引维度。
-        with tf.variable_scope('Changed_classifier'):
-            squeeze_net = tf.squeeze(net, axis=[1, 2])
-            # 将resnet的最后一层输出进行处理，变成二分类
-            y_pred = slim.fully_connected(squeeze_net, num_outputs=self.num_classes,
-                                        activation_fn=None)
-                                      
+        # with tf.variable_scope('Changed_classifier'):
+        #     squeeze_net = tf.squeeze(net, axis=[1, 2])
+        #     # 将resnet的最后一层输出进行处理，变成二分类
+        #     y_pred = slim.fully_connected(squeeze_net, num_outputs=self.num_classes,
+        #                                 activation_fn=None)
+        y_pred = net
+
         with tf.variable_scope('Grad_CAM_Operators'):
             y_pred_softmax = tf.nn.softmax(y_pred)
             predicted_class_cam = tf.argmax(y_pred_softmax, 1)
