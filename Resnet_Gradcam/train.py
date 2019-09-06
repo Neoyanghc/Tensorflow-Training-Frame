@@ -23,11 +23,11 @@ flags.DEFINE_string('val_record_path',
                     './datasets/val.record', 
                     'Path to validation tfrecord file.')
 flags.DEFINE_string('checkpoint_path',
-                    './checkpoint/resnet_v1_50.ckpt',
+                    './checkpoint/resnet_v2_50.ckpt',
                     'Path to a pretrained model.')
-flags.DEFINE_string('model_dir', './batch_size512_changed_labma0.03_5000', 'Path to log directory.')
+flags.DEFINE_string('model_dir', './ResnerV2_batch_size256_nor', 'Path to log directory.')
 flags.DEFINE_float('keep_checkpoint_every_n_hours', 
-                   0.1,
+                   0.2,
                    'Save model checkpoint every n hours.')
 flags.DEFINE_string('learning_rate_decay_type',
                     'exponential',
@@ -37,7 +37,7 @@ flags.DEFINE_float('learning_rate',
                    0.0001, 
                    'Initial learning rate.')
 flags.DEFINE_float('end_learning_rate', 
-                   0.000001,
+                   0.00001,
                    'The minimal end learning rate used by a polynomial decay '
                    'learning rate.')
 flags.DEFINE_float('decay_steps',
@@ -48,11 +48,11 @@ flags.DEFINE_float('decay_steps',
                    'over full epoch individually, but replicas will go once '
                    'across all replicas.')
 flags.DEFINE_float('learning_rate_decay_factor',
-                   0.5,
+                   0.94,
                    'Learning rate decay factor.')
 flags.DEFINE_integer('num_classes', 10, 'Number of classes.')
-flags.DEFINE_integer('batch_size', 512, 'Batch size.')
-flags.DEFINE_integer('num_steps', 5000, 'Number of steps.')
+flags.DEFINE_integer('batch_size', 256, 'Batch size.')
+flags.DEFINE_integer('num_steps', 10000, 'Number of steps.')
 flags.DEFINE_integer('input_size', 32, 'Size of picture.')
 
 
@@ -257,17 +257,17 @@ def create_model_fn(features, labels, mode, params=None):
     if mode == tf.estimator.ModeKeys.TRAIN:
         #进行对应预训练模型的加载
         if FLAGS.checkpoint_path:
-            # checkpoint_exclude_scopes = 'resnet_v1_50/conv1,resnet_v1_50/block1'
+            checkpoint_exclude_scopes = 'resnet_v2_50/logits'
             # 指定一些层不加载参数
-            init_variables_from_checkpoint()
+            init_variables_from_checkpoint(checkpoint_exclude_scopes)
     
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
         loss_dict = cls_model.loss(prediction_dict, labels)
         loss = loss_dict['loss']
         classes = postprocessed_dict['classes']
-        add_loss = cls_model.add_loss_of_variance(classes,top_conv)
-        add_loss = add_loss * 0.03
-        loss = tf.add(loss,add_loss)
+        # add_loss = cls_model.add_loss_of_variance(classes,top_conv)
+        # add_loss = add_loss * 0.01
+        # loss = tf.add(loss,add_loss)
         acc = tf.reduce_mean(tf.cast(tf.equal(classes, labels), 'float'))
         tf.summary.scalar('loss', loss)
         tf.summary.scalar('accuracy', acc)

@@ -119,7 +119,7 @@ class Predictor(object):
 
         fig, ax = plt.subplots()
         ax.imshow(origin_img)
-        ax.imshow(cam, cmap=plt.cm.jet, alpha=0.4, 
+        ax.imshow(cam, cmap=plt.cm.jet, alpha=0.5, 
                        interpolation='nearest', vmin=0, vmax=1)
         plt.axis('off')
 
@@ -131,7 +131,7 @@ class Predictor(object):
         plt.subplots_adjust(top=1, bottom=0, left=0, right=1, hspace=0, wspace=0)
         plt.margins(0, 0)
 
-        plt.savefig(save_dir + str(save_name) + '.png', dpi=300)
+        plt.savefig(save_dir + str(save_name), dpi=300)
             # plt.show()
         plt.close()
-        print("successed save "+ str(save_name) + '.png')
+        print("successed save "+ str(save_name))
